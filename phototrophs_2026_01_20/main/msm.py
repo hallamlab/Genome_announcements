@@ -7,7 +7,9 @@ from metasmith.python_api import ContainerRuntime
 from metasmith.hashing import KeyGenerator
 
 base_dir = Path("./cache")
-
+# with open("../../secrets/slurm_account_fir") as f:
+with open("../../secrets/slurm_account_sockeye") as f:
+    SLURM_ACCOUNT = f.readline()
 # agent_home = Source.FromLocal((Path("/home/tony/workspace/tools/MetasmithLibraries/tests/cache/local_home")).resolve())
 # smith = Agent(
 #     home = agent_home,
@@ -15,7 +17,7 @@ base_dir = Path("./cache")
 #     runtime=ContainerRuntime.DOCKER,
 # )
 
-agent_home = SshSource(host="sockeye", path=Path("/scratch/st-shallam-1/pwy_group/metasmith")).AsSource()
+agent_home = SshSource(host="sockeye", path=Path(f"/scratch/{SLURM_ACCOUNT}/pwy_group/metasmith")).AsSource()
 smith = Agent(
     home = agent_home,
     runtime=ContainerRuntime.APPTAINER,
@@ -125,9 +127,6 @@ print(f"task: {task.GetKey()}, input {in_dir}")
 smith.StageWorkflow(task, on_exist="update_all", verify_external_paths=True)
 # # smith.StageWorkflow(task, on_exist="clear", verify_external_paths=False)
 
-# with open("../../secrets/slurm_account_fir") as f:
-with open("../../secrets/slurm_account_sockeye") as f:
-    SLURM_ACCOUNT = f.readline()
 params = dict(
     slurmAccount=SLURM_ACCOUNT,
     executor=dict(
