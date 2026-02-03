@@ -11,6 +11,7 @@ base_dir = Path("./cache")
 # with open("../../secrets/slurm_account_fir") as f:
 with open("../../secrets/slurm_account_sockeye") as f:
     SLURM_ACCOUNT = f.readline()
+
 # agent_home = Source.FromLocal((Path("/home/tony/workspace/tools/MetasmithLibraries/tests/cache/local_home")).resolve())
 # smith = Agent(
 #     home = agent_home,
@@ -18,8 +19,7 @@ with open("../../secrets/slurm_account_sockeye") as f:
 #     runtime=ContainerRuntime.DOCKER,
 # )
 
-host = "sockeye"
-agent_home = SshSource(host=host, path=Path(f"/scratch/{SLURM_ACCOUNT}/pwy_group/metasmith")).AsSource()
+agent_home = SshSource(host="sockeye", path=Path(f"/scratch/{SLURM_ACCOUNT}/pwy_group/metasmith")).AsSource()
 smith = Agent(
     home = agent_home,
     runtime=ContainerRuntime.APPTAINER,
@@ -29,8 +29,7 @@ smith = Agent(
     ]
 )
 
-# host = "fir"
-# agent_home = SshSource(host, Path("/scratch/phyberos/metasmith")).AsSource()
+# agent_home = SshSource("fir", Path("/scratch/phyberos/metasmith")).AsSource()
 # smith = Agent(
 #     home = agent_home,
 #     setup_commands=[
@@ -45,27 +44,31 @@ smith = Agent(
 # import ipynbname
 # notebook_name = ipynbname.name()
 notebook_name = Path(__file__).stem
-# data=Path(f"../data").resolve()
-# data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/flye_raw/sequences-flye_raw_assembly")
-# data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_100x/sequences-isolate_assembly")
-# data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_meta/sequences-hifiasm_meta_assembly")
-data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/check_flye_raw")
+# data=Path("../data").resolve()
+data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/model_strains")
 input_raw = [
-    ((data/"Ana_PS.fna"), "sequences::assembly", dict()),
-    ((data/"Nos_PS.fna"), "sequences::assembly", dict()),
-    ((data/"SynC_PS.fna"), "sequences::assembly", dict()),
-    ((data/"SynT_PS.fna"), "sequences::assembly", dict()),
+    ((data/"Ana_PS.fastq.gz"), "sequences::long_reads", dict(parity="single", length_class="long")),
+    ((data/"Nos_PS.fastq.gz"), "sequences::long_reads", dict(parity="single", length_class="long")),
+    ((data/"SynC_PS.fastq.gz"), "sequences::long_reads", dict(parity="single", length_class="long")),
+    ((data/"SynT_PS.fastq.gz"), "sequences::long_reads", dict(parity="single", length_class="long")),
 ]
 _, _hash = KeyGenerator.FromStr("".join(str(p) for p, t, m in input_raw))
 in_dir = base_dir/f"{notebook_name}/inputs.{_hash}.xgdb"
 todo = {}
 for p, t, m in input_raw:
-    asm = p
-    todo[p] = {asm}
+    if isinstance(p, Path):
+        meta = Path(f"{p.name}.json")
+        reads = p
+        # reads = Path(p.name)
+    else:
+        k = p
+        meta = Path(f"{p}.json")
+        reads = Path(f"{p}.acc")
+    todo[p] = {meta, reads}
 
 lib_path = Path("/home/tony/workspace/tools/MetasmithLibraries")
 d_path = lib_path/"data_types"
-if in_dir.exists():
+if in_dir.exists() and False:
     inputs = DataInstanceLibrary.Load(in_dir)
 else:
     inputs = DataInstanceLibrary(in_dir)
@@ -73,31 +76,18 @@ else:
     inputs.AddTypeLibrary("sequences", DataTypeLibrary.Load(d_path/"sequences.yml"))
     inputs.AddTypeLibrary("ncbi", DataTypeLibrary.Load(d_path/"ncbi.yml"))
     for p, t, m in input_raw:
-        reads = inputs.AddItem(p, t)
+        if isinstance(p, Path):
+            meta = inputs.AddValue(f"{p.name}.json", m, "sequences::read_metadata")
+            # shutil.copy2(p, inputs.location/p.name)
+            # p = Path(p.name)
+            reads = inputs.AddItem(p, t, parents={meta})
+        else:
+            k = p
+            meta = inputs.AddValue(f"{p}.json", m, "sequences::read_metadata")
+            reads = inputs.AddValue(f"{p}.acc", p, t, parents={meta})
     inputs.Save()
 
 # inputs = DataInstanceLibrary.Load(in_dir)
-
-
-
-ref_path = base_dir/f"{host}_ref_dbs"
-loaded = False
-try:
-    ref_dbs = DataInstanceLibrary.Load(ref_path)
-    loaded = True
-except:
-    pass
-if not loaded:
-    match(host):
-        case "sockeye":
-            remote_lib = Path("/arc/project/{SLURM_ACCOUNT}/pwy_group/lib")
-        case _:
-            assert False, f"please add remote lib location for [{host}]"
-    ref_dbs = DataInstanceLibrary(ref_path)
-    ref_dbs.Purge()
-    ref_dbs.AddTypeLibrary("taxonomy", DataTypeLibrary.Load(d_path/"taxonomy.yml"))
-    ref_dbs.AddItem(remote_lib/"metabuli/gtdb", "taxonomy::metabuli_ref")
-    ref_dbs.Save()
 
 resources = [
     DataInstanceLibrary.Load(lib_path/f"resources/{n}")
@@ -105,16 +95,13 @@ resources = [
         "containers",
         # "lib",
     ]
-]+[
-    ref_dbs,
 ]
 
 transforms = [
     TransformInstanceLibrary.Load(lib_path/f"transforms/{n}")
     for n in [
-        # "logistics",
-        # "assembly",
-        "metagenomics",
+        "logistics",
+        "assembly",
     ]
 ]
 
@@ -124,14 +111,17 @@ transforms = [
 #     del lib.manifest[k]
 # transforms.append(lib)
 
+for lib in transforms:
+    print(lib.manifest)
+
 targets = TargetBuilder()
 for n, p in [
-        # ("taxonomy::metabuli_ref",              set()),
-        # ("containers::metabuli.oci",              set()),
-        ("taxonomy::metabuli",              set()),
-        ("taxonomy::metabuli_krona",        set()),
-        ("taxonomy::metabuli_report",       set()),
-        # ("taxonomy::checkm_stats",          set()),
+        # "sequences::miniasm_gfa",
+        ("sequences::read_qc_stats",                set()),
+        ("sequences::flye_raw_assembly",            set()),
+        ("sequences::assembly_stats",               {"sequences::flye_raw_assembly"}),
+        ("sequences::assembly_per_bp_coverage",     {"sequences::flye_raw_assembly"}),
+        ("sequences::assembly_per_contig_coverage", {"sequences::flye_raw_assembly"}),
     ]:
     targets.Add(n, p)
 
@@ -139,6 +129,7 @@ task = smith.GenerateWorkflow(
     samples=[inputs.AsView(mask=v) for k, v in todo.items()],
     resources=resources,
     transforms=transforms,
+    # targets=["sequences::read_qc_stats"],
     targets=targets,
 )
 # task.SaveAs(Source.FromLocal(Path("./cache/test.task").absolute()))
@@ -148,8 +139,13 @@ print(task.ok, len(task.plan.steps))
 print(p)
 print(f"task: {task.GetKey()}, input {in_dir}")
 
+tpath = Path("./cache/test").absolute()
+task.SaveAs(Source.FromLocal(tpath))
+WorkflowTask.Load(tpath)
+
 # smith.StageWorkflow(task, on_exist="update_all", verify_external_paths=True)
 smith.StageWorkflow(task, on_exist="clear", verify_external_paths=False)
+
 
 params = dict(
     slurmAccount=SLURM_ACCOUNT,
@@ -157,8 +153,8 @@ params = dict(
     #     queueSize=500,
     # ),
     process=dict(
-        array=4,
-        tries=1,
+        array=2,
+        tries=2,
     )
 )
 smith.RunWorkflow(
@@ -167,12 +163,13 @@ smith.RunWorkflow(
     # config_file=Path("./fir_config.nf"),
     # config_file=smith.GetNxfConfigPresets()["local"],
     params=params,
-    resource_overrides={
-        "all": Resources(
-            cpus=16,
-        ),
-    }
+    # resource_overrides={
+    #     "all": Resources(
+    #         memory=Size.MB(1),
+    #         cpus=5,
+    #     ),
     #     transforms[1]["megahit.py"]: Resources(
     #         cpus=15,
     #     )
+    # }
 )

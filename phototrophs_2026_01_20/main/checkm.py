@@ -16,8 +16,12 @@ base_dir = Path("./cache")
 #     runtime=ContainerRuntime.DOCKER,
 # )
 
+# with open("../../secrets/slurm_account_fir") as f:
+with open("../../secrets/slurm_account_sockeye") as f:
+    SLURM_ACCOUNT = f.readline()
+    
 host = "sockeye"
-agent_home = SshSource(host=host, path=Path("/scratch/st-shallam-1/pwy_group/metasmith")).AsSource()
+agent_home = SshSource(host=host, path=Path(f"/scratch/{SLURM_ACCOUNT}/pwy_group/metasmith")).AsSource()
 smith = Agent(
     home = agent_home,
     runtime=ContainerRuntime.APPTAINER,
@@ -44,9 +48,9 @@ smith = Agent(
 # notebook_name = ipynbname.name()
 notebook_name = Path(__file__).stem
 # data=Path("../data").resolve()
-# data=Path("/arc/project/st-shallam-1/pwy_group/data/nostoc_anabaena_co-culture/flye_raw.ana_bins")
-# data=Path("/arc/project/st-shallam-1/pwy_group/data/nostoc_anabaena_co-culture/hifi_100x.ana_bins")
-data=Path("/arc/project/st-shallam-1/pwy_group/data/nostoc_anabaena_co-culture/hifi_meta.ana_bins")
+# data=Path("/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/flye_raw.ana_bins")
+# data=Path("/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_100x.ana_bins")
+data=Path("/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_meta.ana_bins")
 input_raw = [
     ((data/"p1.fna"), "sequences::assembly", dict()),
     ((data/"p2.fna"), "sequences::assembly", dict()),
@@ -89,7 +93,7 @@ except:
 if not loaded:
     match(host):
         case "sockeye":
-            remote_lib = Path("/arc/project/st-shallam-1/pwy_group/lib")
+            remote_lib = Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/lib")
         case _:
             assert False, f"please add remote lib location for [{host}]"
     ref_dbs = DataInstanceLibrary(ref_path)
@@ -148,9 +152,6 @@ print(f"task: {task.GetKey()}, input {in_dir}")
 # smith.StageWorkflow(task, on_exist="update_all", verify_external_paths=True)
 smith.StageWorkflow(task, on_exist="clear", verify_external_paths=False)
 
-# with open("../../secrets/slurm_account_fir") as f:
-with open("../../secrets/slurm_account_sockeye") as f:
-    SLURM_ACCOUNT = f.readline()
 params = dict(
     slurmAccount=SLURM_ACCOUNT,
     # executor=dict(

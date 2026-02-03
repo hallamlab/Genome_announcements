@@ -49,12 +49,14 @@ notebook_name = Path(__file__).stem
 # data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/flye_raw/sequences-flye_raw_assembly")
 # data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_100x/sequences-isolate_assembly")
 # data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_meta/sequences-hifiasm_meta_assembly")
-data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/check_flye_raw")
+data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_meta.ana_bins")
 input_raw = [
-    ((data/"Ana_PS.fna"), "sequences::assembly", dict()),
-    ((data/"Nos_PS.fna"), "sequences::assembly", dict()),
-    ((data/"SynC_PS.fna"), "sequences::assembly", dict()),
-    ((data/"SynT_PS.fna"), "sequences::assembly", dict()),
+    ((data/"p1.fna"), "sequences::assembly", dict()),
+    ((data/"p2.fna"), "sequences::assembly", dict()),
+    ((data/"p3.fna"), "sequences::assembly", dict()),
+    ((data/"ANA.fna"), "sequences::assembly", dict()),
+    ((data/"ERY.fna"), "sequences::assembly", dict()),
+    ((data/"RHI.fna"), "sequences::assembly", dict()),
 ]
 _, _hash = KeyGenerator.FromStr("".join(str(p) for p, t, m in input_raw))
 in_dir = base_dir/f"{notebook_name}/inputs.{_hash}.xgdb"
@@ -90,13 +92,14 @@ except:
 if not loaded:
     match(host):
         case "sockeye":
-            remote_lib = Path("/arc/project/{SLURM_ACCOUNT}/pwy_group/lib")
+            remote_lib = Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/lib")
         case _:
             assert False, f"please add remote lib location for [{host}]"
     ref_dbs = DataInstanceLibrary(ref_path)
     ref_dbs.Purge()
     ref_dbs.AddTypeLibrary("taxonomy", DataTypeLibrary.Load(d_path/"taxonomy.yml"))
     ref_dbs.AddItem(remote_lib/"metabuli/gtdb", "taxonomy::metabuli_ref")
+    ref_dbs.AddItem(remote_lib/"gtdb/release226", "taxonomy::gtdb")
     ref_dbs.Save()
 
 resources = [
@@ -126,12 +129,13 @@ transforms = [
 
 targets = TargetBuilder()
 for n, p in [
-        # ("taxonomy::metabuli_ref",              set()),
-        # ("containers::metabuli.oci",              set()),
-        ("taxonomy::metabuli",              set()),
-        ("taxonomy::metabuli_krona",        set()),
-        ("taxonomy::metabuli_report",       set()),
+        # ("taxonomy::metabuli",              set()),
+        # ("taxonomy::metabuli_krona",        set()),
+        # ("taxonomy::metabuli_report",       set()),
         # ("taxonomy::checkm_stats",          set()),
+
+        ("taxonomy::gtdbtk",                set()),
+        ("taxonomy::gtdbtk_raw",            set()),
     ]:
     targets.Add(n, p)
 
@@ -148,8 +152,8 @@ print(task.ok, len(task.plan.steps))
 print(p)
 print(f"task: {task.GetKey()}, input {in_dir}")
 
-# smith.StageWorkflow(task, on_exist="update_all", verify_external_paths=True)
-smith.StageWorkflow(task, on_exist="clear", verify_external_paths=False)
+smith.StageWorkflow(task, on_exist="update_all", verify_external_paths=True)
+# smith.StageWorkflow(task, on_exist="clear", verify_external_paths=False)
 
 params = dict(
     slurmAccount=SLURM_ACCOUNT,
@@ -157,8 +161,8 @@ params = dict(
     #     queueSize=500,
     # ),
     process=dict(
-        array=4,
-        tries=1,
+        array=10,
+        tries=2,
     )
 )
 smith.RunWorkflow(
@@ -167,11 +171,11 @@ smith.RunWorkflow(
     # config_file=Path("./fir_config.nf"),
     # config_file=smith.GetNxfConfigPresets()["local"],
     params=params,
-    resource_overrides={
-        "all": Resources(
-            cpus=16,
-        ),
-    }
+    # resource_overrides={
+    #     "all": Resources(
+    #         cpus=16,
+    #     ),
+    # }
     #     transforms[1]["megahit.py"]: Resources(
     #         cpus=15,
     #     )

@@ -44,8 +44,8 @@ smith = Agent(
 # import ipynbname
 # notebook_name = ipynbname.name()
 notebook_name = Path(__file__).stem
-# data=Path("../data").resolve()
-data=Path("/arc/project/st-shallam-1/pwy_group/data/model_strains")
+# data=Path(f"../data").resolve()
+data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/model_strains")
 input_raw = [
     ((data/"Ana_PS.fastq.gz"), "sequences::long_reads", dict(parity="single", length_class="long")),
     ((data/"Nos_PS.fastq.gz"), "sequences::long_reads", dict(parity="single", length_class="long")),

@@ -6,7 +6,7 @@ from hashlib import md5
 from metasmith.python_api import DataInstanceLibrary
 
 root= Path("../data")
-# res_path = root/"assembly/flye_filter90"
+res_path = root/"assembly/hifi_meta"
 # res_path = root/"assembly/flye_raw"
 # res_path = root/"taxonomy/flye_raw/metabuli"
 # res_path = root/"taxonomy/flye_raw/checkm.ana"
@@ -18,7 +18,7 @@ root= Path("../data")
 # res_path = root/"taxonomy/hifi_meta/checkm"
 # res_path = root/"assembly/check_flye_raw"
 # res_path = root/"taxonomy/check_flye_raw"
-res_path = root/"taxonomy/hifi_meta/gtdbtk.ana"
+# res_path = root/"taxonomy/hifi_meta/gtdbtk.ana"
 
 def _get_hash(p):
     _hash = md5(str(p).encode()).hexdigest()
@@ -26,6 +26,7 @@ def _get_hash(p):
     return _hash
 
 dfg = pd.read_csv(res_path/"_manifests/given.csv")
+print(dfg.shape)
 # given2k = {Path(r["path"]).name:(r["instance_key"], _get_hash(r["path"])) for _, r in dfg.iterrows()}
 given2k = {Path(r["path"]).name:(r["instance_key"], r["instance_index"]) for _, r in dfg.iterrows()}
 given2k = {k:v for k, v in given2k.items() if k.endswith("gz") or k.endswith("fna")}
@@ -44,8 +45,8 @@ reslib = DataInstanceLibrary.Load(res_path)
 to_rename = {}
 for p, lin in p2lin.items():
     lin = lin["lineage"]
-    # pk = "fWlq91HI"
-    pk = "1DldQWJB"
+    pk = "fWlq91HI"
+    # pk = "1DldQWJB"
     assert pk in lin, p 
     k = lin[pk][0]
     if k not in k2name:

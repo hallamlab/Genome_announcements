@@ -49,12 +49,10 @@ notebook_name = Path(__file__).stem
 # data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/flye_raw/sequences-flye_raw_assembly")
 # data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_100x/sequences-isolate_assembly")
 # data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/hifi_meta/sequences-hifiasm_meta_assembly")
-data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/nostoc_anabaena_co-culture/check_flye_raw")
+data=Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/data/ab48/assembly/hifi_meta/sequences-hifiasm_meta_assembly")
 input_raw = [
-    ((data/"Ana_PS.fna"), "sequences::assembly", dict()),
-    ((data/"Nos_PS.fna"), "sequences::assembly", dict()),
-    ((data/"SynC_PS.fna"), "sequences::assembly", dict()),
-    ((data/"SynT_PS.fna"), "sequences::assembly", dict()),
+    ((data/"ABC-240403_KD.fna"), "sequences::assembly", dict()),
+    ((data/"ABP-230518_KD.fna"), "sequences::assembly", dict()),
 ]
 _, _hash = KeyGenerator.FromStr("".join(str(p) for p, t, m in input_raw))
 in_dir = base_dir/f"{notebook_name}/inputs.{_hash}.xgdb"
@@ -90,7 +88,7 @@ except:
 if not loaded:
     match(host):
         case "sockeye":
-            remote_lib = Path("/arc/project/{SLURM_ACCOUNT}/pwy_group/lib")
+            remote_lib = Path(f"/arc/project/{SLURM_ACCOUNT}/pwy_group/lib")
         case _:
             assert False, f"please add remote lib location for [{host}]"
     ref_dbs = DataInstanceLibrary(ref_path)
@@ -158,7 +156,7 @@ params = dict(
     # ),
     process=dict(
         array=4,
-        tries=1,
+        tries=2,
     )
 )
 smith.RunWorkflow(
