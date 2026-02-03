@@ -1,4 +1,4 @@
-This branch contains the scripts used to process the Nostoc metagenome announcement
+This branch contains the scripts used to process the Nostoc sp. TISTR 8405 metagenome announcement at `<this repo>/phototrophs_2026_01_20`
 
 Biosamples:
 - SAMN54935253
